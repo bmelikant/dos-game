@@ -88,9 +88,17 @@ draw_tilemap:
     mov al,byte [ds:si]             ; get the color value
     inc si
 
+    push cx
+    mov cx,word [bp+10]             ; scaling factor
+
+.pixels:
+
     mov byte [es:bx],al             ; put the color in the destination byte
     inc bx
 
+    loop .pixels
+
+    pop cx
     loop .columns
 
     pop dx

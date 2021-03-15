@@ -1,7 +1,7 @@
 org 0x0100
 bits 16
 
-%define BACKGROUND_COLOR 0x4d
+%define BACKGROUND_COLOR 0x04
 
 grass_block:
 
@@ -28,7 +28,7 @@ _main:
     call fill_screen
     add sp,2
     
-    push word 1
+    push word 10
     push word 20
     push word 20
     push word grass_block
