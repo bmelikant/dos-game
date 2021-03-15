@@ -17,10 +17,10 @@ tile_data:
 db 02h,02h,02h,02h,02h,02h,02h,02h
 db 02h,06h,02h,06h,06h,06h,02h,06h
 db 02h,06h,06h,06h,06h,06h,06h,06h
-db 06h,06h,06h,06h,06h,06h,06h,06h
-db 06h,06h,06h,06h,06h,06h,06h,06h
-db 06h,06h,06h,06h,06h,06h,06h,06h
-db 06h,06h,06h,06h,06h,06h,06h,06h
+db 06h,06h,06h,06h,14h,06h,14h,06h
+db 14h,06h,14h,06h,06h,06h,06h,06h
+db 06h,06h,06h,06h,18h,06h,18h,06h
+db 06h,14h,06h,18h,06h,14h,06h,06h
 db 06h,06h,06h,06h,06h,06h,06h,06h
 
 start:
@@ -45,66 +45,20 @@ start:
 
 demo:
 
-    mov cx,
+    mov cx,X_TILES
+    xor dx,dx
 
-    push word 0
-    push word 0
-    push word tile_data
+.fill_loop:
 
-    call draw_tile
-    add sp,6
-
-    push word 0
-    push word 8
+    push word 16
+    push word dx
     push word tile_data
     call draw_tile
     add sp,6
 
-    ret
+    add dx,8
+    loop .fill_loop
 
-; draw_rectangle - draw a rectangle on the screen
-; push arguments in reverse order:
-; draw_rectangle(word start_x, word start_y, word end_x, word end_y, word color_attr)
-draw_rectangle:
-
-    push bp
-    mov bp,sp
-
-    push VMEM_SEGMENT
-    pop es
-
-    mov cx,word [bp+8]      ; start_y goes into cx
-
-.row:
-
-    push cx
-
-    mov ax,PIXELS_PER_ROW
-    mul cx                      ; (y_pos * PIXELS_PER_ROW)
-    xchg ax,cx                  ; put the result back into cx
-
-    ; put the starting location in bx
-    mov bx,word [bp+10]                  ; start_x goes into bx
-    add bx,cx                           ; (y_pos * PIXELS_PER_ROW) + x_pos
-
-    mov cx,word [bp+6]                  ; end x position
-    sub cx,word [bp+8]                  ; subtract the start x position
-    mov dx,word [bp+10]                ; color attribute
-
-.column:
-
-    mov [es:bx],dl          ; store the color in es:bx
-    inc bx                  ; increment bx
-    loop .column          ; and loop cx times
-
-    ; go to the next row
-    pop cx
-    inc cx
-    cmp cx,word [bp+4]      ; check to see if we hit end_y yet
-
-    jb .row
-    
-    pop bp
     ret
 
 ; draw_tile(tile_data *tile, uint16_t tile_x, uint16_t tile_y)
