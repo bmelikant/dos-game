@@ -12,11 +12,22 @@ bits 16
 
     jmp start
 
-tile_data:
+grass_block:
 
 db 02h,02h,02h,02h,02h,02h,02h,02h
 db 02h,06h,02h,06h,06h,06h,02h,06h
 db 02h,06h,06h,06h,06h,06h,06h,06h
+db 06h,06h,06h,06h,14h,06h,14h,06h
+db 14h,06h,14h,06h,06h,06h,06h,06h
+db 06h,06h,06h,06h,18h,06h,18h,06h
+db 06h,14h,06h,18h,06h,14h,06h,06h
+db 06h,06h,06h,06h,06h,06h,06h,06h
+
+dirt_block:
+
+db 06h,14h,06h,06h,06h,06h,06h,06h
+db 06h,06h,06h,06h,06h,06h,18h,06h
+db 18h,06h,06h,06h,06h,06h,06h,06h
 db 06h,06h,06h,06h,14h,06h,14h,06h
 db 14h,06h,14h,06h,06h,06h,06h,06h
 db 06h,06h,06h,06h,18h,06h,18h,06h
@@ -52,12 +63,37 @@ demo:
 
     push word 16
     push word dx
-    push word tile_data
+    push word grass_block
     call draw_tile
     add sp,6
 
     add dx,8
     loop .fill_loop
+
+    mov cx,Y_TILES
+    sub cx,3
+    mov ax,24
+
+.fill_lines:
+
+    push cx
+    mov cx,X_TILES
+    xor dx,dx
+
+.fill_dirt_blocks:
+
+    push word ax
+    push word dx
+    push word dirt_block
+    call draw_tile
+    add sp,6
+
+    add dx,8
+    loop .fill_dirt_blocks
+
+    pop cx
+    add ax,8
+    loop .fill_lines
 
     ret
 
