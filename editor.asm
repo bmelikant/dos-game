@@ -36,12 +36,12 @@ _main:
     call do_square
     add sp,8
     
-    ;push word 10
-    ;push word 20
-    ;push word 20
-    ;push word grass_block
-    ;call draw_tilemap
-    ;add sp,8
+    push word 10
+    push word 50
+    push word 50
+    push word grass_block
+    call draw_tilemap
+    add sp,8
 
     call await_keypress
 

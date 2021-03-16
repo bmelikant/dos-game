@@ -108,77 +108,44 @@ draw_tilemap:
 
     push bp
     mov bp,sp
-
-    push es
     push bx
-
-    push VGA_SEGMENT
-    pop es                      ; get the correct segment into ES
 
     mov si,word [bp+4]          ; *tm goes in si for reading
     mov cx,TILE_HEIGHT          ; tile height goes in cx
     mov dx,word [bp+8]          ; y coordinate into dx
-
-.reset_column:
-
-    pop dx
-    mov ax,TILE_WIDTH
-    sub si,ax
-
-    push cx
-    push dx
-
-    jmp .row
+    mov ax,word [bp+2]          ; x coordinate into ax
 
 .rows:
 
     push cx
     push dx
 
-    mov cx,word [bp+10]
-    push cx
-
-.row:
-
-    mov ax,VGA_SCREEN_WIDTH
-    mul dx
-    mov dx,ax
-
-    mov bx,word [bp+6]              ; x location into bx
-    add bx,dx                       ; screen_loc = (y_loc * VGA_SCREEN_WIDTH) + x_loc -> bx = (dx * VGA_SCREEN_WIDTH) + bx
-
     mov cx,TILE_WIDTH
 
 .columns:
 
-    mov al,byte [ds:si]             ; get the color value
-    inc si
+    push ax
 
-    push cx
-    mov cx,word [bp+10]             ; scaling factor
+    mov bx,word [bp+10]
+    push bx
+    push dx
+    push ax
+    mov bx,word [bp+4]
+    push bx
+    call do_square
+    add sp,8
 
-.pixels:
-
-    mov byte [es:bx],al             ; put the color in the destination byte
-    inc bx
-
-    loop .pixels
-
-    pop cx
+    pop ax
+    add ax,word [bp+10]
     loop .columns
-
-    ; pop cx, reset si and loop to columns
-    pop cx
-    loop .reset_column
 
     pop dx
     pop cx
 
-    inc dx
+    add dx,word [bp+10]         ; add scaling-factor to dx
     loop .rows
 
-    pop bx
-    pop es
+    push bx
     pop bp
     ret
 
