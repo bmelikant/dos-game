@@ -2,6 +2,7 @@ org 0x0100
 bits 16
 
 %define BACKGROUND_COLOR 0x04
+%define SQUARE_COLOR 0x00
 
 grass_block:
 
@@ -27,13 +28,20 @@ _main:
     push word BACKGROUND_COLOR
     call fill_screen
     add sp,2
-    
+
+    push word SQUARE_COLOR
     push word 10
     push word 20
     push word 20
-    push word grass_block
-    call draw_tilemap
+    call do_square
     add sp,8
+    
+    ;push word 10
+    ;push word 20
+    ;push word 20
+    ;push word grass_block
+    ;call draw_tilemap
+    ;add sp,8
 
     call await_keypress
 

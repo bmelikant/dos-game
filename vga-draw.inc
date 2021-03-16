@@ -50,6 +50,56 @@ fill_screen:
     pop bp
     ret
 
+; do_square(uint16_t abs_x, uint16_t abs_y, uint16_t sf, uint8_t color)
+; draw a square at the given coordinate, using the given scaling factor
+; if scaling factor is 1, draw a single pixel
+do_square:
+
+    push bp
+    mov bp,sp    
+    push es
+    push bx
+
+    push VGA_SEGMENT
+    pop es
+
+    mov dx,word [bp+6]          ; absolute y in dx
+    mov cx,word [bp+8]          ; scaling factor in cx
+
+.row:
+
+    push dx
+    push cx
+
+    mov ax,VGA_SCREEN_WIDTH     ; and the width of the screen
+    mul dx
+
+    mov bx,word [bp+4]
+    add bx,ax                   ; mem_loc = (abs_y * VGA_SCREEN_WIDTH) + abs_x
+
+    mov cx,word [bp+8]          ; scale factor in cx (again)
+
+.column:
+
+    mov al,byte [bp+10]         ; color attribute in al
+    mov byte [es:bx],al         ; store it back
+    inc bx
+
+    loop .column
+
+    pop cx
+    pop dx
+
+    inc dx
+    loop .row
+
+    pop bx
+    pop es
+    pop bp
+    ret
+
+
+
 ; draw_tilemap(tilemap *tm, uint16_t x, uint16_t y, uint16_t sf)
 ; draw the given tilemap data at the requested x,y coordinate
 ; sf: scaling factor (used to increase the draw size of the tiles)
@@ -69,10 +119,26 @@ draw_tilemap:
     mov cx,TILE_HEIGHT          ; tile height goes in cx
     mov dx,word [bp+8]          ; y coordinate into dx
 
+.reset_column:
+
+    pop dx
+    mov ax,TILE_WIDTH
+    sub si,ax
+
+    push cx
+    push dx
+
+    jmp .row
+
 .rows:
 
     push cx
     push dx
+
+    mov cx,word [bp+10]
+    push cx
+
+.row:
 
     mov ax,VGA_SCREEN_WIDTH
     mul dx
@@ -100,6 +166,10 @@ draw_tilemap:
 
     pop cx
     loop .columns
+
+    ; pop cx, reset si and loop to columns
+    pop cx
+    loop .reset_column
 
     pop dx
     pop cx
