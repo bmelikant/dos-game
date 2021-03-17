@@ -174,6 +174,72 @@ draw_tilemap:
     pop bp
     ret
 
+; _cdecl draw_box(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t thiccness, uint8_t color)
+; draw a box on the screen
+; x1,y1  -------  x2,y1
+;       |       |
+;       |       |
+; x1,y2  -------  x2,y2
+
+draw_box:
+
+    push bp
+    mov bp,sp
+
+    mov dx,word [bp+4]      ; x
+    add dx,word [bp+8]      ; w
+    mov word [x2],dx
+
+    mov dx,word [bp+6]      ; y
+    add dx,word [bp+10]     ; h
+    mov word [y2],dx
+
+.horz_line_one:
+    
+    push word [bp+14]       ; color value
+    push word [bp+12]       ; thiccness
+    push word [x2]          ; x2
+    push word [bp+6]        ; y1
+    push word [bp+4]        ; x1
+    call horz_line
+    add sp,10
+
+.horz_line_two:
+
+    push word [bp+14]       ; color
+    push word [bp+12]       ; thiccness
+    push word [x2]          ; x2
+    push word [y2]          ; y2
+    push word [bp+4]        ; x1
+    call horz_line
+    add sp,10
+
+.vert_line_one:
+
+    push word [bp+14]       ; color
+    push word [bp+12]       ; thiccness
+    push word [y2]          ; y2
+    push word [bp+6]        ; y1
+    push word [bp+4]        ; x1
+    call vert_line
+    add sp,10
+
+.vert_line_two:
+
+    push word [bp+14]       ; color
+    push word [bp+12]       ; thiccness
+    push word [y2]          ; y2
+    push word [bp+6]        ; y1
+    push word [x2]          ; x2
+    call vert_line
+    add sp,10
+
+    pop bp
+    ret
+
+x2 dw 0
+y2 dw 0
+
 ; _cdecl do_frect(uint16_t x_pos, uint16_t y_pos, uint16_t width, uint16_t height, uint8_t fillColor)
 ; draw a filled rectangle at the requested x,y coordinate
 do_frect:
@@ -342,6 +408,129 @@ put_string:
 
     pop bx
     pop si
+    pop bp
+    ret
+
+; _cdecl horz_line(uint16_t x1, uint16_t y, uint16_t x2, uint16_t thiccness, uint8_t color)
+; draw a horizontal line on the display using the given drawing color
+horz_line:
+
+    push bp
+    mov bp,sp
+    push es
+    push bx
+
+    push VGA_SEGMENT
+    pop es
+
+    xor cx,cx                   ; clear out cx
+    mov dx,word [bp+6]          ; starting y location into dx
+
+.thiccness:
+
+    push cx
+    push dx
+
+    ; compute line length
+    mov cx,word [bp+8]          ; end x location
+    sub cx,word [bp+4]          ; subtract start x location
+
+    mov ax,VGA_SCREEN_WIDTH
+    mul dx
+    xchg dx,ax                  ; as everywhere else, compute (y * SCREEN_WIDTH)
+
+    mov bx,word [bp+4]
+    add bx,dx                   ; abs = (y * SCREEN_WIDTH) + x
+    mov al,byte [bp+12]         ; color attribute in al
+
+.draw:
+
+    mov byte [es:bx],al         ; store the color attribute
+    inc bx
+    loop .draw                  ; cx contains line length
+
+    pop dx
+    pop cx
+    inc cx
+
+    test cx,0x01                ; odd numbered row
+    jz .even
+
+    add dx,cx                   ; add the value in cx to dx
+    jmp .next
+
+.even:
+
+    sub dx,cx                   ; subtract cx from dx             
+
+.next:
+
+    cmp cx,word [bp+10]
+    jb .thiccness
+
+    pop bx
+    pop es
+    pop bp
+    ret
+
+; _cdecl vert_line(uint16_t x, uint16_t y1, uint16_t y2, uint16_t thiccness, uint8_t color)
+; draw a vertical line on the display
+vert_line:
+
+    push bp
+    mov bp,sp
+    push es
+    push bx
+
+    push VGA_SEGMENT
+    pop es
+
+    xor cx,cx                   ; clear out cx
+    mov dx,word [bp+4]          ; starting x location into dx
+
+.thiccness:
+
+    push cx
+    push dx
+
+    ; compute line length
+    mov cx,word [bp+8]          ; end y location
+    mov bx,word [bp+6]          ; starting y location into bx
+    sub cx,bx
+    mov ax,VGA_SCREEN_WIDTH
+    mul bx                      ; compute for absolute y
+    mov bx,ax                   ; multiplication gets stored in ax ugh
+
+    pop dx
+    add bx,dx                   ; abs = (y * SCREEN_WIDTH) + x
+    mov al,byte [bp+12]         ; color attribute in al
+
+.draw:
+
+    mov byte [es:bx],al         ; store the color attribute
+    add bx,VGA_SCREEN_WIDTH    
+    loop .draw                  ; cx contains line length
+
+    pop cx
+    inc cx
+
+    test cx,0x01                ; odd numbered row
+    jz .even
+
+    add dx,cx                   ; add the value in cx to dx
+    jmp .next
+
+.even:
+
+    sub dx,cx                   ; subtract cx from dx             
+
+.next:
+
+    cmp cx,word [bp+10]         ; see if we satisfied the thiccness
+    jb .thiccness
+
+    pop bx
+    pop es
     pop bp
     ret
 

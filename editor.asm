@@ -23,8 +23,8 @@ db 06h,06h,14h,06h,14h,06h,06h,06h,06h,06h
 db 06h,06h,06h,06h,06h,06h,06h,06h,06h,06h
 
 ; data area
-editor_current_pixel_x dw 0
-editor_current_pixel_y dw 0
+editor_current_x dw 0
+editor_current_y dw 0
 
 _main:
 
@@ -53,7 +53,7 @@ draw_tile_editor:
     push bp
     mov bp,sp
 
-    ; draw a test character
+    ; print the editor title
     xor dx,dx
     mov dl,FONT_COLOR
     push dx
@@ -80,12 +80,31 @@ draw_tile_editor:
     call draw_tilemap
     add sp,8
 
-    ; draw a frame around the selected pixel
-    
+    ; compute the starting and ending points for the bounds box
+    mov dx,15                           ; tile map starts at 15
+    add dx,word [editor_current_x]      ; add the x offset
+    mov ax,16                           ; scaling factor
+    mul dx
+    push ax                             ; save the x location onto the stack
+
+    mov dx,15
+    add dx,word [editor_current_y]      ;
+    mov ax,16
+    mul dx                      ; compute y position
+
+    pop dx                      ; restore the x value back into dx
+
+    push word 0fh               ; color
+    push word 1                 ; thiccness
+    push word 10                ; height
+    push word 100                ; y loc is in ax
+    push word 10                ; width
+    push word 200                ; x loc in dx
+    call draw_box
+    add sp,12
 
     pop bp
     ret
-
 
 await_keypress:
 
