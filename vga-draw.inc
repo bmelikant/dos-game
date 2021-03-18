@@ -6,8 +6,8 @@
 %define VGA_SCREEN_HEIGHT   200
 %define VGA_SEGMENT         0xA000
 
-%define TILE_WIDTH      10
-%define TILE_HEIGHT     10
+%define TILE_WIDTH      8
+%define TILE_HEIGHT     8
 
 %define TRANSPARENCY_ENTRY 0xff
 
