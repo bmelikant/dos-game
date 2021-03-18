@@ -16,12 +16,23 @@
 %define VGA_TEXT_WIDTH  8
 %define VGA_TEXT_HEIGHT 8
 
+%define BUFFER_BYTES (VGA_SCREEN_HEIGHT*VGA_SCREEN_WIDTH)
+%define BUFFER_WORDS BUFFER_BYTES/2
+%define BUFFER_DWORDS (BUFFER_BYTES/4)
+
+%define BUFFER_SEGMENT 0xB000
+
 ; _cdecl enter_vga_mode()
 ; go to video mode 13h
 enter_vga_mode:
 
+    ;;we are going to hijack the segment above us for use i guess :shrug:
     mov ax,VGA_GRAPHICS_MODE
     int 0x10
+    clc
+
+.done:
+
     ret
 
 ; _cdecl leave_vga_mode()
@@ -30,6 +41,30 @@ leave_vga_mode:
 
     mov ax,0x03
     int 0x10
+
+    ret
+
+; _cdecl draw()
+; draw the back buffer to the display
+draw:
+
+    push ds
+    push es
+
+    push word BUFFER_SEGMENT
+    pop ds
+
+    push VGA_SEGMENT
+    pop es
+
+    xor si,si
+    xor di,di
+
+    mov cx,BUFFER_WORDS
+    rep movsw
+
+    pop es
+    pop ds
     ret
 
 ; _cdecl fill_screen(uint8_t color)
@@ -40,7 +75,7 @@ fill_screen:
     mov bp,sp
     push es
 
-    push VGA_SEGMENT
+    push BUFFER_SEGMENT
     pop es
 
     mov cx,(VGA_SCREEN_WIDTH*VGA_SCREEN_HEIGHT)/2
@@ -76,7 +111,7 @@ do_pixel:
     cmp al,TRANSPARENCY_ENTRY
     je .done
 
-    push VGA_SEGMENT
+    push BUFFER_SEGMENT
     pop es
 
     mov dx,word [bp+6]          ; absolute y in dx
@@ -188,17 +223,20 @@ draw_box:
 
     mov dx,word [bp+4]      ; x
     add dx,word [bp+8]      ; w
+    inc dx
     mov word [x2],dx
 
     mov dx,word [bp+6]      ; y
     add dx,word [bp+10]     ; h
+    inc dx
     mov word [y2],dx
 
 .horz_line_one:
     
     push word [bp+14]       ; color value
     push word [bp+12]       ; thiccness
-    push word [x2]          ; x2
+    mov dx,word [x2]
+    push dx                 ; x2
     push word [bp+6]        ; y1
     push word [bp+4]        ; x1
     call horz_line
@@ -228,6 +266,7 @@ draw_box:
 
     push word [bp+14]       ; color
     push word [bp+12]       ; thiccness
+    inc word [y2]
     push word [y2]          ; y2
     push word [bp+6]        ; y1
     push word [x2]          ; x2
@@ -249,7 +288,7 @@ do_frect:
     push es
     push bx
 
-    push VGA_SEGMENT
+    push BUFFER_SEGMENT
     pop es
 
     ; skip transparent rectangles
@@ -314,7 +353,7 @@ vga_putc:
     push VGA_TEXT_BITMAP_SEGMENT
     pop ds
 
-    push VGA_SEGMENT
+    push BUFFER_SEGMENT
     pop es
 
     xor dx,dx
@@ -420,7 +459,7 @@ horz_line:
     push es
     push bx
 
-    push VGA_SEGMENT
+    push BUFFER_SEGMENT
     pop es
 
     xor cx,cx                   ; clear out cx
@@ -482,7 +521,7 @@ vert_line:
     push es
     push bx
 
-    push VGA_SEGMENT
+    push BUFFER_SEGMENT
     pop es
 
     xor cx,cx                   ; clear out cx
