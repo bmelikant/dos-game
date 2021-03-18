@@ -45,16 +45,19 @@ db 06h,06h,06h,06h,06h,06h,06h,06h
 
 ; data area
 editor_current_x    db 0
+editor_x_max db TEDIT_MAX_PIXEL_X
 editor_current_y    db 0
+editor_y_max db TEDIT_MAX_PIXEL_Y
+
 palette_current_x   db 0
+palette_x_max db PALETTE_COLUMNS - 1
 palette_current_y   db 0
+palette_y_max db PALETTE_ROWS - 1
 
 change_palette      db 0
 
-editor_x_max db TEDIT_MAX_PIXEL_X
-editor_y_max db TEDIT_MAX_PIXEL_Y
-palette_x_max db PALETTE_COLUMNS - 1
-palette_y_max db PALETTE_ROWS - 1
+
+
 
 _main:
 
@@ -71,7 +74,7 @@ _main:
     call fill_screen
     add sp,2
 
-    ;call draw_tile_editor       ; draw the current state of the tile editor
+    call draw_tile_editor       ; draw the current state of the tile editor
     call draw_palette           ; and the color selector
     call draw
     call await_keypress         ; get user input
@@ -121,13 +124,15 @@ draw_tile_editor:
     add sp,8
 
     ; compute the starting and ending points for the bounds box
-    mov dx,word [editor_current_x]      ; current selected editor tile
+    xor dx,dx
+    mov dl,byte [editor_current_x]      ; current selected editor tile
     mov ax,TILE_SCALE                   ; scaling factor
     mul dx
     add ax,TILE_EDITOR_X                ; add the x offset of the tile map
     push ax                             ; save the x location onto the stack
 
-    mov dx,word [editor_current_y]      ;
+    xor dx,dx
+    mov dl,byte [editor_current_y]      ;
     mov ax,TILE_SCALE
     mul dx                      ; compute y position
     add ax,TILE_EDITOR_Y
@@ -224,8 +229,6 @@ await_keypress:
 
     cmp al,'w'
     je .column_up
-    mov cx,PALETTE_ROWS
-    push cx
 
     cmp al,'a'
     je .column_left
@@ -257,22 +260,24 @@ await_keypress:
 .column_down:
 
     ; increase the y location of the draw box, up to a max of 10
-    cmp word [editor_current_y],TEDIT_MAX_PIXEL_Y
+    mov byte [di],dl
+    cmp dl,byte [di+1]
     jb .increment_editor_y
     xor dx,dx
-    mov word [editor_current_y],dx
+    mov byte [di],dl
     jmp .done
 
 .increment_editor_y:
 
-    inc word [editor_current_y]
+    inc byte [di]
     jmp .done
 
 .column_up:
 
-    cmp word [editor_current_y],0
+    cmp byte [editor_current_y],0
     jg .decrement_editor_y
-    mov word [editor_current_y],TEDIT_MAX_PIXEL_Y
+    mov al,byte [editor_current_y+1]
+    mov byte [editor_current_y],al
     jmp .done
 
 .decrement_editor_y:
