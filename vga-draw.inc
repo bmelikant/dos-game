@@ -2,12 +2,14 @@
 %define _VGA_DRAW_INC
 
 %define VGA_GRAPHICS_MODE   0x13
+%define VGA_TEXT_MODE       0x03
 %define VGA_SCREEN_WIDTH    320
 %define VGA_SCREEN_HEIGHT   200
 %define VGA_SEGMENT         0xA000
+%define BUFFER_SEGMENT      0xB000
 
-%define TILE_WIDTH      10
-%define TILE_HEIGHT     10
+%define TILE_WIDTH      8
+%define TILE_HEIGHT     8
 
 %define TRANSPARENCY_ENTRY 0xff
 
@@ -18,9 +20,6 @@
 
 %define BUFFER_BYTES (VGA_SCREEN_HEIGHT*VGA_SCREEN_WIDTH)
 %define BUFFER_WORDS BUFFER_BYTES/2
-%define BUFFER_DWORDS (BUFFER_BYTES/4)
-
-%define BUFFER_SEGMENT 0xB000
 
 ; _cdecl enter_vga_mode()
 ; go to video mode 13h
@@ -39,7 +38,7 @@ enter_vga_mode:
 ; return to mode 03h
 leave_vga_mode:
 
-    mov ax,0x03
+    mov ax,VGA_TEXT_MODE
     int 0x10
 
     ret
