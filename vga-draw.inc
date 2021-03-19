@@ -572,4 +572,59 @@ vert_line:
     pop bp
     ret
 
+; _cdecl display_hex_number(uint16_t number, uint16_t x, uint16_t y, uint8_t color)
+; display a hexadecimal number on the screen.
+display_hex_number:
+
+    push bp
+    mov bp,sp
+
+    push si
+    mov si,hexdigits
+
+    mov dh,byte [bp+10]         ; color value in dh
+    mov dl,'$'                  ; and character to print
+    push dx
+    push word [bp+8]            ; y coordinate
+    push word [bp+6]            ; x coordiante
+    call vga_putc               ; draw
+    add sp,6
+
+    mov ax,VGA_TEXT_WIDTH
+    add word [bp+6],ax          ; next draw coordinate
+
+    mov ax,word [bp+4]
+    shr ax,4                    ; get the top digit
+    add si,ax                   ; add the character offset to si
+
+    mov dh,byte [bp+10]
+    mov dl,byte [si]
+    push dx
+    push word [bp+8]
+    push word [bp+6]
+    call vga_putc
+    add sp,6
+
+    mov si,hexdigits
+    mov ax,VGA_TEXT_WIDTH
+    add word [bp+6],ax
+
+    mov ax,word [bp+4]
+    and ax,0x0f                 ; remove the top four bits
+    add si,ax
+
+    mov dh,byte [bp+10]
+    mov dl,byte [si]
+    push dx
+    push word [bp+8]
+    push word [bp+6]
+    call vga_putc
+    add sp,6
+
+    pop si
+    pop bp
+    ret
+
+hexdigits db "0123456789ABCDEF"
+
 %endif

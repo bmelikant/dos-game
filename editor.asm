@@ -56,9 +56,6 @@ palette_y_max db PALETTE_ROWS - 1
 
 change_palette      db 0
 
-
-
-
 _main:
 
     push cs
@@ -147,6 +144,23 @@ draw_tile_editor:
     push word dx                ; x loc in dx
     call draw_box
     add sp,12
+
+    ; draw a box for the hex digit
+    push word 4ah                           ; color attribute
+    push word 10                            ; height
+    push word 30                            ; width
+    push word 150                           ; y loc
+    push word 10                            ; x loc
+    call do_frect
+    add sp,10
+
+    ; draw a test hex digit
+    push word 0fh
+    push word 151                ; y location
+    push word 13                ; x location
+    push word 4ah
+    call display_hex_number
+    add sp,8
 
     pop bp
     ret
