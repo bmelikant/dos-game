@@ -23,11 +23,11 @@ bits 16
 %define TEDIT_MAX_PIXEL_X 7
 %define TEDIT_MAX_PIXEL_Y 7
 
-%define PALETTE_POS_X 5
-%define PALETTE_POS_Y 140
-%define PALETTE_SQUARE_SZ 6
-%define PALETTE_ROWS 8
-%define PALETTE_COLUMNS 32
+%define PALETTE_POS_X 145
+%define PALETTE_POS_Y 10
+%define PALETTE_SQUARE_SZ 8
+%define PALETTE_ROWS 16
+%define PALETTE_COLUMNS 16
 
     jmp _main
 
@@ -260,7 +260,7 @@ await_keypress:
 .column_down:
 
     ; increase the y location of the draw box, up to a max of 10
-    mov byte [di],dl
+    mov dl,byte [di]
     cmp dl,byte [di+1]
     jb .increment_editor_y
     xor dx,dx
@@ -274,39 +274,43 @@ await_keypress:
 
 .column_up:
 
-    cmp byte [editor_current_y],0
+    mov dl,byte [di]
+    cmp dl,0
     jg .decrement_editor_y
-    mov al,byte [editor_current_y+1]
-    mov byte [editor_current_y],al
+    mov al,byte [di+1]
+    mov byte [di],al
     jmp .done
 
 .decrement_editor_y:
 
-    dec word [editor_current_y]
+    dec byte [di]
     jmp .done
 
 .column_left:
 
-    cmp word [editor_current_x],0
+    mov dl,byte [bx]
+    cmp dl,0
     jg .decrement_editor_x
-    mov word [editor_current_x],TEDIT_MAX_PIXEL_X
+    mov al,byte [bx+1]
+    mov byte [bx],al
     jmp .done
 
 .decrement_editor_x:
 
-    dec word [editor_current_x]
+    dec byte [bx]
     jmp .done
 
 .column_right:
 
-    cmp word [editor_current_x],TEDIT_MAX_PIXEL_X
+    mov dl,byte [bx]
+    cmp dl,byte [bx+1]
     jb .increment_editor_x
-    mov word [editor_current_x],0
+    mov byte [bx],0
     jmp .done
 
 .increment_editor_x:
 
-    inc word [editor_current_x]
+    inc byte [bx]
 
 .done:
 
