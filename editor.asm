@@ -31,7 +31,6 @@ bits 16
 
     jmp _main
 
-
 grass_block:
 
 db 02h,02h,02h,02h,02h,02h,02h,02h
@@ -54,7 +53,7 @@ palette_x_max db PALETTE_COLUMNS - 1
 palette_current_y   db 0
 palette_y_max db PALETTE_ROWS - 1
 
-change_palette      db 0
+selected_color  db  0
 
 _main:
 
@@ -65,6 +64,29 @@ _main:
 
     call enter_vga_mode
 
+.open_tiles:
+
+    push word BACKGROUND_COLOR
+    call fill_screen
+    add sp,2
+
+    call open_tilemap
+
+    push word tilemap_filemeta
+    push word [tilemap_fhandle]
+    call load_tilemap_metadata
+    add sp,4
+
+    jnc .tile_editor
+
+    call leave_vga_mode
+
+    mov ah,0x09
+    mov dx,tilemap_error
+    int 0x21
+
+    jmp terminate
+
 .tile_editor:
 
     push word BACKGROUND_COLOR
@@ -72,7 +94,7 @@ _main:
     add sp,2
 
     call draw_tile_editor       ; draw the current state of the tile editor
-    call draw_palette           ; and the color selector
+    ;call draw_palette           ; and the color selector
     call draw
     call await_keypress         ; get user input
 
@@ -145,20 +167,46 @@ draw_tile_editor:
     call draw_box
     add sp,12
 
-    ; draw a box for the hex digit
-    push word 4ah                           ; color attribute
+    ; print the editor title
+    xor dx,dx
+    mov dl,FONT_COLOR
+
+    push dx
+    push word current_color
+    push word 151
+    push word 13
+    call put_string
+    add sp,8
+
+    ; draw the current color attribute
+    xor dx,dx
+    mov dl,byte [selected_color]
+
+    push dx                           ; color attribute
     push word 10                            ; height
     push word 30                            ; width
-    push word 150                           ; y loc
+    push word 160                           ; y loc
     push word 10                            ; x loc
     call do_frect
     add sp,10
 
-    ; draw a test hex digit
+    xor dx,dx
+    mov dl,byte [selected_color]
+
     push word 0fh
-    push word 151                ; y location
+    push word 161                ; y location
     push word 13                ; x location
-    push word 4ah
+    push dx                     ; save the current color
+    call display_hex_number
+    add sp,8
+
+    xor dx,dx
+    mov dx,word [tilemap_filemeta]
+    push word 0fh
+    push word 181
+    push word 13
+    push dx
+
     call display_hex_number
     add sp,8
 
@@ -216,17 +264,6 @@ await_keypress:
 
     push di
 
-    ; set up whether we are changing the palette value or the tile pixel
-    mov al,byte [change_palette]
-    or al,al
-    jz .change_tile_pos
-
-    mov bx,palette_current_x
-    mov di,palette_current_y
-    jmp .key
-
-.change_tile_pos:
-
     mov bx,editor_current_x
     mov di,editor_current_y
 
@@ -235,47 +272,70 @@ await_keypress:
     mov ah,0x07
     int 0x21
 
-    cmp al,'t'
-    je .toggle
+    ; if the character code returned is zero, it's an extended code
+    or al,al
+    jz .get_extended_code
 
     cmp al,'s'
-    je .column_down
+    je .column_down         ; move down on either the palette or the tile map
 
     cmp al,'w'
-    je .column_up
+    je .column_up           ; up on the palette or tile map
 
     cmp al,'a'
-    je .column_left
+    je .column_left         ; left
 
     cmp al,'d'
-    je .column_right
+    je .column_right        ; right
+
+    cmp al,0x20
+    je .switch_pixel_color  ; spacebar
 
     cmp al,'q'
-    je .send_exit_code
+    je .send_exit_code      ; exit the editor
 
 .skip:
 
     jmp .done
 
-.toggle:
+.get_extended_code:
 
-    mov al,byte [change_palette]
-    or al,al
-    jz .toggle_on
+    int 0x21
 
-    mov byte [change_palette],0
+    cmp al,0x4b
+    je .dec_color       ; left arrow
+
+    cmp al,0x4d
+    je .inc_color       ; right arrow
+
     jmp .done
 
-.toggle_on:
+.dec_color:
 
-    mov byte [change_palette],1
+    mov dl,byte [selected_color]
+    or dl,dl
+    jz .done
+
+    dec dl
+    mov byte [selected_color],dl
+
+    jmp .done
+
+.inc_color:
+
+    mov dl,byte [selected_color]
+    cmp dl,255
+    je .done
+
+    inc dl
+    mov byte [selected_color],dl
     jmp .done
 
 .column_down:
 
     ; increase the y location of the draw box, up to a max of 10
-    mov dl,byte [di]
-    cmp dl,byte [di+1]
+    mov dl,byte [editor_current_y]
+    cmp dl,byte [editor_current_y+1]
     jb .increment_editor_y
     xor dx,dx
     mov byte [di],dl
@@ -283,48 +343,68 @@ await_keypress:
 
 .increment_editor_y:
 
-    inc byte [di]
+    inc byte [editor_current_y]
     jmp .done
 
 .column_up:
 
-    mov dl,byte [di]
+    mov dl,byte [editor_current_y]
     cmp dl,0
     jg .decrement_editor_y
-    mov al,byte [di+1]
-    mov byte [di],al
+    mov al,byte [editor_current_y+1]
+    mov byte [editor_current_y],al
     jmp .done
 
 .decrement_editor_y:
 
-    dec byte [di]
+    dec byte [editor_current_y]
     jmp .done
 
 .column_left:
 
-    mov dl,byte [bx]
+    mov dl,byte [editor_current_x]
     cmp dl,0
     jg .decrement_editor_x
-    mov al,byte [bx+1]
-    mov byte [bx],al
+    mov al,byte [editor_current_x+1]
+    mov byte [editor_current_x],al
     jmp .done
 
 .decrement_editor_x:
 
-    dec byte [bx]
+    dec byte [editor_current_x]
     jmp .done
 
 .column_right:
 
-    mov dl,byte [bx]
-    cmp dl,byte [bx+1]
+    mov dl,byte [editor_current_x]
+    cmp dl,byte [editor_current_x+1]
     jb .increment_editor_x
-    mov byte [bx],0
+    mov byte [editor_current_x],0
     jmp .done
 
 .increment_editor_x:
 
-    inc byte [bx]
+    inc byte [editor_current_x]
+    jmp .done
+
+.switch_pixel_color:
+
+    xor ax,ax
+    xor dx,dx
+
+    mov al,byte [editor_x_max]        ; max columns
+    inc al
+    mov dl,byte [editor_current_y]    ; current row
+    mul dl                            ; multiply
+
+    add al,byte [editor_current_x]      ; add the column offset
+
+    ; AX contains the offset into the current block. Switch the color of the pixel with the new color
+    mov bx,grass_block
+    add bx,ax
+
+    mov dl,byte [selected_color]
+    mov byte [bx],dl
 
 .done:
 
@@ -340,7 +420,49 @@ await_keypress:
     pop di
     ret
 
+open_tilemap:
+
+    mov dx,tilemap_filename
+    mov ah,0x3d
+    mov al,01000000b        ; open file read-only
+
+    int 0x21
+    jc .error
+
+    mov word [tilemap_fhandle],ax
+    ret
+
+.error:
+
+    call leave_vga_mode
+
+    mov ah,0x09
+    mov dx,tilemap_error
+    int 0x21
+
+terminate:
+
+    xor ax,ax
+    int 0x16
+
+    mov ax,0x4C00
+    int 0x21
+
+
 %include "vga-draw.inc"
+%include "tilemap.inc"
 
 editor_title: db 'TILE EDITOR',0
+current_color: db 'CURRENT COLOR',0
+
+tilemap_error db 'An error occurred loading the requested tilemap$',0
+tilemap_read_error db 'An error occured reading the requested tilemap$'
+tilemap_filename: db 'TILES.DAT',0
+tilemap_fhandle dw 0
+
+tilemap_filemeta:
+.tile_count     dw 0
+.tile_pixels_x  db 0
+.tile_pixels_y  db 0
+
 tile_buffer: times 100 db 0xff
